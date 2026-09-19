@@ -1,0 +1,45 @@
+name: Deploy to cPanel via SSH
+
+on:
+  push:
+    branches:
+      - main  # یا نام شاخه اصلی شما (master یا main)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # نسخه نود جی اس مورد نیاز پروژه
+
+      - name: Install Dependencies & Build
+        run: |
+          cd backend # اگر پوشه بک‌اند جداست، اگر کل پروژه در روت است این خط را حذف یا اصلاح کنید
+          npm install
+          # اگر فرانت اند جداست دستورات build آن را هم اینجا اضافه کنید
+          # cd ../frontend && npm install && npm run build 
+          
+      - name: Deploy via SSH
+        uses: easingthemes/ssh-deploy@v4
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
+          SOURCE: . # کل پروژه را ارسال می‌کند
+          TARGET: ${{ secrets.NODE_APP_DIR }}
+          EXCLUDE: ".git, node_modules, .env" # فایل‌های غیرضروری ارسال نشوند
+          SCRIPT_AFTER: |
+            cd ${{ secrets.NODE_APP_DIR }}
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            npm install --production
+            # دستور ریستارت اپلیکیشن در سی پنل (بسته به تنظیمات شما ممکن است متفاوت باشد)
+            # معمولاً در سی پنل نیازی به دستور دستی نیست و با آپدیت فایل‌ها خودکار ریستارت می‌شود
+            # یا اگر از Passenger استفاده می‌کنید:
+            # touch tmp/restart.txt
