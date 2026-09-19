@@ -1,0 +1,54 @@
+name: Deploy to cPanel via SSH
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd ${{ secrets.NODE_APP_DIR }}
+            
+            # پول کردن آخرین تغییرات از گیت
+            echo "Pulling latest changes..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # نصب وابستگی‌ها
+            echo "Installing dependencies..."
+            npm install --production
+            
+            # اگر پوشه کلاینت جداگانه دارد
+            if [ -d "client" ]; then
+              echo "Building frontend..."
+              cd client
+              npm install
+              npm run build
+              cd ..
+            fi
+            
+            # ری‌استارت کردن اپلیکیشن Node.js در سی‌پنل
+            # ایجاد فایل restart.txt برای Passenger
+            mkdir -p tmp
+            touch tmp/restart.txt
+            
+            echo "Deployment completed successfully!"
